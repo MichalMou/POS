@@ -1,84 +1,96 @@
 //
-// Created by Michal on 28. 12. 2020.
+// Created by Michal on 29. 12. 2020.
 //
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include "server.h"
 #include <stdio.h>
-#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 int main(int argc, char *argv[])
 {
-    int sockfd, newsockfd;
-    socklen_t cli_len;
-    struct sockaddr_in serv_addr, cli_addr;
+#define BUFF_N 256
+    int socketfd, newSocketfd;
+    socklen_t clientLength;
+    struct sockaddr_in cliAddr, servAddr;
     int n;
-    char buffer[256];
+    char buffer[BUFF_N];
 
-    if (argc < 2)
-    {
-        fprintf(stderr,"usage %s port\n", argv[0]);
+    // overenie ci bol zadany port do argumentov
+    if(argc < 2){
+        printf("Nieje zadany port, socket zlyhal!");
         return 1;
     }
 
-    bzero((char*)&serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(atoi(argv[1]));
+    bzero((char*)&servAddr,sizeof(servAddr));
+    servAddr.sin_family = AF_INET;
+    // TODO prerobit z localhosta
+    servAddr.sin_addr.s_addr = INADDR_ANY;
+    servAddr.sin_port = htons(atoi(argv[1]));
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-    {
-        perror("Error creating socket");
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(socketfd < 0){
+        perror("Chyba pri vytvarani socketu :");
         return 1;
     }
 
-    if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-        perror("Error binding socket address");
+    if(bind(socketfd,(struct sockaddr*) &servAddr, sizeof(servAddr)) < 0){
+        perror("Chyba pri bindovani socketu :");
         return 2;
     }
+    listen(socketfd, 5);
+    clientLength = sizeof(cliAddr);
 
-    listen(sockfd, 5);
-    cli_len = sizeof(cli_addr);
-
-    newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &cli_len);
-    if (newsockfd < 0)
-    {
-        perror("ERROR on accept");
+    newSocketfd = accept(socketfd,(struct sockaddr * ) &cliAddr, &clientLength);
+    if(newSocketfd < 0){
+        perror("Chyba pri akceptacii socketu");
         return 3;
     }
+    bzero(buffer, BUFF_N);
+    n = read(newSocketfd, buffer, BUFF_N - 1);
+    if(n < 0){
+        perror("Chyba pri citani zo socketu");
+        return 4;
+    }
+    printf("Dostal som spravu %s\n", buffer);
 
-    while((strncmp(buffer, "exit", 4)) != 0){
-
-        bzero(buffer,256);
-        n = read(newsockfd, buffer, 255);
-        if (n < 0)
-        {
-            perror("Error reading from socket");
-            return 4;
-        }
-        printf("Here is the message: %s\n", buffer);
-
-        const char* msg = "I got your message";
-        n = write(newsockfd, msg, strlen(msg)+1);
-        if (n < 0)
-        {
-            perror("Error writing to socket");
-            return 5;
-        }
-
+    const char * msg = "Dostal som tvoju spravu %s\n";
+    n = write(newSocketfd,msg,strlen(msg) + 1);
+    if(n < 0) {
+        perror("Chyba pri zapise do socketu");
+        return 4;
     }
 
-
-
-
-
-    close(newsockfd);
-    close(sockfd);
-
+#undef BUFF_N
+    close(socketfd);
+    close(newSocketfd);
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

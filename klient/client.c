@@ -1,79 +1,78 @@
 //
-// Created by Michal on 28. 12. 2020.
+// Created by Michal on 29. 12. 2020.
 //
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
+
+#include "client.h"
 #include <stdio.h>
-#include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <strings.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <netdb.h>
 
-int main(int argc, char *argv[])
-{
-    int sockfd, n;
-    struct sockaddr_in serv_addr;
+#define BUFF_N 256
+
+int main(int argc, char *argv[]){
+    int socketfd, n;
+    struct sockaddr_in servAddr;
     struct hostent* server;
+    char buffer[BUFF_N];
 
-    char buffer[256];
-
-    if (argc < 3)
-    {
-        fprintf(stderr,"usage %s hostname port\n", argv[0]);
+    if(argc < 3){
+        fprintf(stderr, "Pouzitie %s ipaddresa_servera porn \n, argv[0]");
         return 1;
     }
 
     server = gethostbyname(argv[1]);
-    if (server == NULL)
-    {
-        fprintf(stderr, "Error, no such host\n");
+    if(server == NULL){
+        fprintf(stderr, "Taky server nepoznam!");
         return 2;
     }
 
-    bzero((char*)&serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
+    bzero((char*)&servAddr, sizeof(servAddr));
+    servAddr.sin_family = AF_INET;
     bcopy(
             (char*)server->h_addr,
-            (char*)&serv_addr.sin_addr.s_addr,
+            (char*)&servAddr.sin_addr.s_addr,
             server->h_length
-    );
-    serv_addr.sin_port = htons(atoi(argv[2]));
+            );
+    servAddr.sin_port = htons(atoi(argv[2]));
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0)
-    {
-        perror("Error creating socket");
+    socketfd = socket(AF_INET,SOCK_STREAM, 0);
+    if(socketfd < 0){
+        perror("Nedokazalo sa vytvorit!");
         return 3;
     }
 
-    if(connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
-    {
-        perror("Error connecting to socket");
+    if(connect(socketfd, (struct sockaddr*)&servAddr, sizeof(servAddr)) < 0) {
+        perror("Nedokazalo sa pripojit!");
         return 4;
     }
 
-    printf("Please enter a message: ");
-    bzero(buffer,256);
-    fgets(buffer, 255, stdin);
+    for(int i = 0; i < 5; i++){
+        printf( "Prosim zadajte %d spravu pre server:", i+1);
+        bzero(buffer, BUFF_N);
+        fgets(buffer, BUFF_N - 1, stdin);
+    }
 
-    n = write(sockfd, buffer, strlen(buffer));
-    if (n < 0)
-    {
-        perror("Error writing to socket");
+    n = write(socketfd, buffer, strlen(buffer));
+    if(n < 0) {
+        perror("Nepodarilo sa ulozit informaciu do socketu!");
         return 5;
     }
 
-    bzero(buffer,256);
-    n = read(sockfd, buffer, 255);
-    if (n < 0)
-    {
-        perror("Error reading from socket");
+    bzero(buffer, BUFF_N);
+    n = read(socketfd, buffer, BUFF_N);
+    if(n < 0) {
+        perror("Neprecital som spravu!");
         return 6;
     }
 
-    printf("%s\n",buffer);
-    close(sockfd);
+    printf("%s\n", buffer);
 
+#undef BUFF_N
     return 0;
 }
